@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     }
 
     Mat img;
-    img = imread(argv[1], CV_LOAD_IMAGE_COLOR);   // Read the file
+    img = imread(argv[1], IMREAD_COLOR);   // Read the file
 
     if(!img.data)                              // Check for invalid input
     {
@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 
 
     //converts image to gray
-    cvtColor(img, img, CV_BGR2GRAY);        //intput and output image names
+    cvtColor(img, img, COLOR_BGR2GRAY);        //intput and output image names
     blur(img, img, Size(5,5));              //Gaussian blur 5x5
 
     //apply Sobel filter
@@ -38,11 +38,7 @@ int main(int argc, char* argv[])
 
 
     //Threshold
-    threshold(img, img, 0, 255, CV_THRESH_OTSU+CV_THRESH_BINARY);
-
-    //Morphology (Perform after substraction maybe)
-    //Mat kernel = getStructuringElement(MORPH_RECT, Size(20, 20));  //Create kernel
-    //morphologyEx(img, img, CV_MOP_CLOSE, kernel);    //remove internal noise
+    threshold(img, img, 0, 255, THRESH_OTSU+THRESH_BINARY);
 
     //Canny(img, img, 100, 100, 3, false);      //Direct edge detection
 
@@ -51,7 +47,7 @@ int main(int argc, char* argv[])
 
 
     Mat img2;
-    img2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);   // Read the file
+    img2 = imread(argv[2], IMREAD_COLOR);   // Read the file
 
     if(!img2.data)                              // Check for invalid input
     {
@@ -61,7 +57,7 @@ int main(int argc, char* argv[])
 
 
     //converts image to gray
-    cvtColor(img2, img2, CV_BGR2GRAY);
+    cvtColor(img2, img2, COLOR_BGR2GRAY);
     blur(img2, img2, Size(5,5));              //Gaussian blur 5x5
 
     //apply Sobel filter
@@ -73,7 +69,7 @@ int main(int argc, char* argv[])
 
 
     //Threshold
-    threshold(img2, img2, 0, 255, CV_THRESH_OTSU+CV_THRESH_BINARY);
+    threshold(img2, img2, 0, 255, THRESH_OTSU+THRESH_BINARY);
 
 
 
@@ -83,14 +79,24 @@ int main(int argc, char* argv[])
     //Rect r = Rect(115,215,95,95);    //create a Rect with top-left vertex at (115,215), of width 95 and height 95 pixels.
     //rectangle(img,r,Scalar(27,127,0),4);    //draw the rect defined by r with line thickness 4 and Green color
 
-
-    namedWindow("Display window", WINDOW_AUTOSIZE);// Create a window for display.
-    imshow("Display window", img);                // Show our image inside it.
-    
-
     Mat img3;
     img3 = img2 - img;
-    //imshow("Display window", img3);
+
+    //Morphology (Perform after substraction maybe)
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(35, 35));  //Create kernel
+    morphologyEx(img3, img3, CV_MOP_CLOSE, kernel);    //remove internal noise
+
+
+
+    namedWindow("img", WINDOW_AUTOSIZE);// Create a window for display.
+    imshow("img", img);                // Show our image inside it.
+    
+    namedWindow("img2", WINDOW_AUTOSIZE);// Create a window for display.
+    imshow("img2", img2);                // Show our image inside it.
+
+    namedWindow("img2", WINDOW_AUTOSIZE);// Create a window for display.
+    imshow("img3", img3);
+        
 
 
     waitKey(0);             // Wait for a keystroke in the window
