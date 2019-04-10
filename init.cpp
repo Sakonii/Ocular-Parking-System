@@ -10,16 +10,16 @@ using namespace std;
 bool verifySizes(RotatedRect candidate)
 {
 
-    // Check for aspect ratio with error margin of 40%
-    float error = 0.3;
+    // Check for aspect ratio with error margin of 35%
+    float error = 0.35;
 
 
-    // Average car dimension: 1845x570 aspect ~2.8
+    // Average car dimension: 1845x570  i.e. aspect ratio: ~2.8
     const float aspect = 2.8;
 
     
     // Set a min and max area; all other patchs are discarded
-    int min = 16 * aspect * 16;     // min area
+    int min = 20 * aspect * 20;     // min area
     int max = 224 * aspect * 224;   // max area
 
     
@@ -61,8 +61,10 @@ int main(int argc, char* argv[])
 
 
     // Read the file
-    Mat img;
-    img = imread(argv[1], IMREAD_COLOR);   
+    Mat img, img_perm, img2;
+    img = imread(argv[1], IMREAD_COLOR); 
+    img2 = imread(argv[2], IMREAD_COLOR);  
+    img_perm = img2;  
 
     
     if(!img.data)                              
@@ -75,7 +77,7 @@ int main(int argc, char* argv[])
 
     // Converts image to gray
     cvtColor(img, img, COLOR_BGR2GRAY);        // Intput and output image names
-    blur(img, img, Size(5,5));              // Gaussian blur 5x5
+    blur(img, img, Size(5,5));              // Gaussian blur 5,5
 
 
     // Apply Sobel filter
@@ -90,15 +92,6 @@ int main(int argc, char* argv[])
 
     // Threshold
     threshold(img, img, 0, 255, THRESH_OTSU+THRESH_BINARY);
-
-
-    // Canny(img, img, 100, 100, 3, false);      // Direct edge detection
-
-
-
-    // Read the file
-    Mat img2;
-    img2 = imread(argv[2], IMREAD_COLOR);   
 
 
     if(!img2.data)                              
@@ -139,8 +132,14 @@ int main(int argc, char* argv[])
 
 
     // Morphology (Perform after substraction)
-    Mat kernel = getStructuringElement(MORPH_RECT, Size(35, 35));  // Create kernel
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(40, 40));  // Create kernel
     morphologyEx(img3, img3, CV_MOP_CLOSE, kernel);    // Remove internal noise
+
+
+    // Substract original edges from later ones
+    Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));    
+    img3 -= img;
+    // erode(img3, img3, kernel);
 
 
     // instantiate contours
@@ -159,6 +158,7 @@ int main(int argc, char* argv[])
         
         // Remove patch that has no inside limits of aspect ratio and area.
 
+
         // Create bounding rect of object
         RotatedRect mr = minAreaRect(Mat(*itc));
 
@@ -173,6 +173,19 @@ int main(int argc, char* argv[])
             rects.push_back(mr);
         }      
     }
+
+
+    Scalar color = Scalar(75, 150, 0);
+
+    
+    for(int i = 0; i < contours.size(); i++)
+    {      
+       
+        // rotated rectangle
+        Point2f rect_points[4]; rects[i].points(rect_points);
+        for(int j = 0; j < 4; j++)
+            line(img_perm, rect_points[j], rect_points[(j+1)%4], color, 3, 8);
+    }    
     
 
 
@@ -185,9 +198,11 @@ int main(int argc, char* argv[])
     namedWindow("img2", WINDOW_AUTOSIZE);
     imshow("img2", img2);                
 
-    namedWindow("img2", WINDOW_AUTOSIZE);
+    namedWindow("img3", WINDOW_AUTOSIZE);
     imshow("img3", img3);
 
+    namedWindow("img_perm", WINDOW_AUTOSIZE);
+    imshow("img_perm", img_perm);
 
 
     waitKey(0);             // Wait for a keystroke in the window
