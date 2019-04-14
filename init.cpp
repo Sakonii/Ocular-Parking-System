@@ -10,12 +10,12 @@ using namespace std;
 bool verifySizes(RotatedRect candidate)
 {
 
-    // Check for aspect ratio with error margin of 35%
-    float error = 0.35;
+    // Check for aspect ratio with error margin of 42%  (Fine-tuned)                    ***
+    float error = 0.42;
 
 
-    // Average car dimension: 1845x570  i.e. aspect ratio: ~2.8
-    const float aspect = 2.8;
+    // Average car dimension: 1845x570  i.e. aspect ratio: ~3.2 (Fine-tuned to 2.7)     ***
+    const float aspect = 2.7;
 
     
     // Set a min and max area; all other patchs are discarded
@@ -132,14 +132,20 @@ int main(int argc, char* argv[])
 
 
     // Morphology (Perform after substraction)
-    Mat kernel = getStructuringElement(MORPH_RECT, Size(40, 40));  // Create kernel
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(45, 45));  // Create kernel         ***
     morphologyEx(img3, img3, CV_MOP_CLOSE, kernel);    // Remove internal noise
 
 
-    // Substract original edges from later ones
-    Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));    
-    img3 -= img;
-    // erode(img3, img3, kernel);
+    // Substract original edges from later ones        
+    img3 -= img;   
+
+    // Erode and dilation to separate detected sections clearly                             ***
+
+    Mat erode_element = getStructuringElement(MORPH_RECT, Size(15, 15));                    
+    Mat dilate_element = getStructuringElement(MORPH_RECT, Size(13, 13));                                  
+
+    erode(img3, img3, erode_element);
+    dilate(img3, img3, dilate_element);
 
 
     // instantiate contours
