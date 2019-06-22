@@ -7,7 +7,7 @@ using namespace std;
 
 
 
-//  Global Variables required for Callback functions
+//  Global Variables required for Callback functions (Run-time Variables)
 
     int N = 0;                          //  Count for number of points of a rectangle (for mouse input)
     Mat img_perm;
@@ -22,12 +22,7 @@ using namespace std;
     vector<RotatedRect>::iterator itc_red;
 
 //  Temporary value initialization for each co-ordinate in co-ordinates (coords)
-    vector<Point> coords = {
-                                Point(0,0),
-                                Point(0,0),
-                                Point(0,0),
-                                Point(0,0),
-                           };
+    vector<Point> coords;
 
 
 
@@ -41,7 +36,10 @@ bool Detect_Rect_In_Rects(const cv::RotatedRect &_rect, const vector<cv::Rotated
 
     for(_itc  = _rects.begin(); _itc <= _rects.end(); _itc++)
     {
-        if ( (_rect.center.x == RotatedRect(*_itc).center.x) && (_rect.center.y == RotatedRect(*_itc).center.y) && (_rect.angle == RotatedRect(*_itc).angle) )
+        if(_rects.empty())
+//          Prevent Segfaults
+            break;
+        else if ( (_rect.center.x == RotatedRect(*_itc).center.x) && (_rect.center.y == RotatedRect(*_itc).center.y) && (_rect.angle == RotatedRect(*_itc).angle) )
             return true;
     }
 
@@ -97,7 +95,10 @@ bool Does_Rectangles_Contain_Point(const vector<RotatedRect> &_rects, const Poin
 //  Checks if the co-ordinate lies inside any region "RotatedRect" of '_rects'  
     for(vector<RotatedRect>::const_iterator _itc = _rects.begin(); _itc <= _rects.end(); _itc++)
     {
-        if(Does_Rectangle_Contain_Point( RotatedRect(*_itc), _point ))
+        if(_rects.empty())
+//          Prevent SegFaults
+            break;
+        else if(Does_Rectangle_Contain_Point( RotatedRect(*_itc), _point ))
             return 1;
     }
 
@@ -147,10 +148,10 @@ void Mouse_To_Region(vector<RotatedRect> &rects, vector<Point> &coords)
 //  Adds "RotatedRect" region on mouse-clicked 'coords'
     int x[4]; int y[4];
 
-    x[0] = coords[0].x;     y[0] = coords[0].y;
-    x[1] = coords[1].x;     y[1] = coords[1].y;
-    x[2] = coords[2].x;     y[2] = coords[2].y;
-    x[3] = coords[3].x;     y[3] = coords[3].y;
+    x[0] = coords.at(0).x;     y[0] = coords.at(0).y;
+    x[1] = coords.at(1).x;     y[1] = coords.at(1).y;
+    x[2] = coords.at(2).x;     y[2] = coords.at(2).y;
+    x[3] = coords.at(3).x;     y[3] = coords.at(3).y;
 
     int center_x = (x[0] + x[1] + x[2] + x[3]) / 4;
     int center_y = (y[0] + y[1] + y[2] + y[3]) / 4;
@@ -168,7 +169,7 @@ void Mouse_To_Region(vector<RotatedRect> &rects, vector<Point> &coords)
     cout << "Center: " << center_x << " , " << center_y << endl;
     cout << "Angle: " << angle <<endl;
     cout << "Dimension: " << width << " x " << height << endl << endl;
-    cout << "Usage:\n\t1.) Register 4 Left-clicks (co-ordinates) to add regions \n\t2.) Right-click to delete a region  \n\t3.) Press 'Enter' to continue" << endl << endl;
+    cout << "Usage:\n\t1.) Register 4 Left-clicks (Rectangle co-ordinates) to add parking regions \n\t2.) Right-click to delete a region  \n\t3.) Press 'Enter' to continue" << endl << endl;
     N = 0;
 
     Draw_Rotated_Rects(img_perm, rects);
@@ -287,7 +288,7 @@ int main(int argc, char* argv[])
     Mat dilate_element = getStructuringElement(MORPH_RECT, Size(4, 4));
     Mat erode_element = getStructuringElement(MORPH_RECT, Size(4, 4));
     Scalar colors = Scalar(128, 128, 128);
-    rects_red.push_back( RotatedRect(Point2f(0, 1), Size2f(0, 0), 0) );         // 'rects_red' initialized (prevent SegFaults)
+    //rects_red.push_back( RotatedRect(Point2f(0, 1), Size2f(0, 0), 0) );         // 'rects_red' initialized (prevent SegFaults)
 
 
     if(img_empty.empty())
@@ -383,7 +384,7 @@ int main(int argc, char* argv[])
 
 //  I/O operations
 
-    cout << "Usage:\n\t1.) Register 4 Left-clicks (co-ordinates) to activate custom co-ordinates \n\t2.) Press 'Enter' to continue to video" << endl << endl;
+    cout << "Usage:\n\t1.) Register 4 Left-clicks (Rectangle co-ordinates) to add parking regions \n\t2.) Right-click to delete a region  \n\t3.) Press 'Enter' to continue" << endl << endl;
 
     namedWindow("Debug Screen", WINDOW_AUTOSIZE);
     setMouseCallback("Debug Screen", mouse_event, &rects_green);
@@ -406,7 +407,7 @@ int main(int argc, char* argv[])
 //  Read the files
     Mat frame, frame_perm;
     img_empty = imread(argv[1], IMREAD_COLOR);
-    VideoCapture frames("test.mp4");
+    VideoCapture frames("vid3.mp4");
 
 
     if(!frames.isOpened() || img_empty.empty())
@@ -506,7 +507,7 @@ int main(int argc, char* argv[])
         itc_vehicles_contour = contours_vehicles.begin();
 
 
-
+    
         while(itc_vehicles_contour!=contours_vehicles.end())
         {
 
@@ -536,8 +537,11 @@ int main(int argc, char* argv[])
 //              Prevent duplication of same regions
                 red_already_contains_this_obstruction = Detect_Rect_In_Rects( RotatedRect(*itc_green), rects_red );
 
-                if ( Does_Rectangle_Contain_Point( RotatedRect(*itc_green), RotatedRect(*itc_vehicles).center ) &&  !red_already_contains_this_obstruction)
-                    rects_red.push_back(RotatedRect(*itc_green));
+                if(rects_vehicles.empty() || rects_green.empty())
+//                  Prevent SegFaults
+                    break;
+                else if ( Does_Rectangle_Contain_Point( RotatedRect(*itc_green), RotatedRect(*itc_vehicles).center ) &&  !red_already_contains_this_obstruction) 
+                    rects_red.push_back(RotatedRect(*itc_green));        
             }
         }
 
@@ -554,7 +558,10 @@ int main(int argc, char* argv[])
 
 //             for(itc_vehicles = rects_vehicles.begin(); itc_vehicles <= rects_vehicles.end(); itc_vehicles++)
 //             {
-//                 if ( Does_Rectangle_Contain_Point( RotatedRect(*itc_red), RotatedRect(*itc_vehicles).center ) )
+//                 if(rects_vehicles.empty() || rects_red.empty())
+// //              Prevent SegFaults
+//                     break;
+//                 else if ( Does_Rectangle_Contain_Point( RotatedRect(*itc_red), RotatedRect(*itc_vehicles).center ) )
 //                     obstruction_remains = true;
 //             }
 
@@ -595,6 +602,11 @@ int main(int argc, char* argv[])
         setMouseCallback("frame_perm", mouse_event, &rects_green);
         imshow("frame_perm", frame_perm);
 
+        cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" << endl;
+        cout << "Total parking Spots = \t" << rects_green.size() << endl;
+        cout << "No. of Spots Occupied =\t" << rects_red.size() << endl;
+        cout << "No. of Empty Spaces =\t" << (rects_green.size()-rects_red.size()) << endl << endl;
+
 
         if (waitKey(20) == 10)
 //          Wait 'Enter' key input for 20 secs
@@ -611,5 +623,5 @@ int main(int argc, char* argv[])
 
 //  Dependencies:           sudo apt-get install libopencv-dev
 //  Compiled with:          g++ init.cpp `pkg-config --cflags --libs opencv`
-//  Executed with:          ./a.out img_empty.jpg
+//  Executed with:          ./a.out img_empty3.jpg
 //  Switch to ticket mode:  Comment out lines marked around line 555
