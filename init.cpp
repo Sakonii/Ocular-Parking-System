@@ -12,7 +12,7 @@ using namespace std;
     int N = 0;                          //  Count for number of points of a rectangle (for mouse input)
     Mat img_perm;
 
-//  instantiate contours
+//  Instantiate contours and its iterators
     vector<vector<Point>> contours;     //  Instantiate vector of vectors of points (contours)
 
     vector<RotatedRect> rects_green;
@@ -21,7 +21,7 @@ using namespace std;
     vector<RotatedRect> rects_red;
     vector<RotatedRect>::iterator itc_red;
 
-//  Temporary value initialization for each co-ordinate in co-ordinates (coords)
+//  Instantiate co-ordinates (coords)
     vector<Point> coords;
 
 
@@ -259,6 +259,14 @@ int min = 8 * aspect * 8;     // min area                                       
 
 
 
+void Clear_Screen()
+{
+//  OS independent clearing the screen method
+    cout << "\033[2J\033[1;1H" << endl << endl << endl;
+}
+
+
+
 
 /*====================================              MAIN FUNCTION          ============================================*/
 /*=====================================================================================================================*/
@@ -269,10 +277,10 @@ int main(int argc, char* argv[])
 {
 
 
-    if(argc != 2)
+    if(argc != 3)
     {
 //      Check for correct input
-        cout <<"  Enter empty image PATH as command-line arguments" << endl;
+        cout <<"\n   Enter empty image and video PATH as command-line arguments \n\n   Example: ./a.out img_empty4.jpg vid4.mp4" << endl << endl;
         return -1;
     }
 
@@ -407,13 +415,13 @@ int main(int argc, char* argv[])
 //  Read the files
     Mat frame, frame_perm;
     img_empty = imread(argv[1], IMREAD_COLOR);
-    VideoCapture frames("vid3.mp4");
+    VideoCapture frames(argv[2]);
 
 
     if(!frames.isOpened() || img_empty.empty())
     {
 //      Check for invalid input
-        cout << "Could not open or find the video 'test.mp4' on root directory of project folder" << endl;
+        cout << "\n   Invalid Path for video file. \n   Example: ./a.out img_empty4.jpg vid4.mp4" << endl;
         return -1;
     }
 
@@ -438,8 +446,8 @@ int main(int argc, char* argv[])
 
 
 //  Edge Detection operations
-    Sobel(img_empty, img_horizontal, CV_8U, 0, 1, 3, 1.3, 0);  // Vertical Edges              ****
-    Sobel(img_empty, img_vertical, CV_8U, 1, 0, 3, 1.3, 0);    // Horizontal Edges            ****
+    Sobel(img_empty, img_horizontal, CV_8U, 0, 1, 3, 5, 0);  // Vertical Edges              ****
+    Sobel(img_empty, img_vertical, CV_8U, 1, 0, 3, 5, 0);    // Horizontal Edges            ****
 
 
 //  Add Horizontal + Vertical edges
@@ -467,9 +475,8 @@ int main(int argc, char* argv[])
 
 //      Apply Sobel filter
         Mat img_horizontal2, img_vertical2;
-        Sobel(frame, img_horizontal2, CV_8U, 0, 1, 3, 1, 0);  // Vertical Edges              ****
-
-        Sobel(frame, img_vertical2, CV_8U, 1, 0, 3, 1, 0);    // Horizontal Edges            ****
+        Sobel(frame, img_horizontal2, CV_8U, 0, 1, 3, 4, 0);  // Vertical Edges              ****
+        Sobel(frame, img_vertical2, CV_8U, 1, 0, 3, 4, 0);    // Horizontal Edges            ****
 
 
 //      Add Horizontal + Vertical edges
@@ -595,17 +602,18 @@ int main(int argc, char* argv[])
 
 //      Output Operations
 
-        namedWindow("img4", WINDOW_AUTOSIZE);      // Create a window for display.
-        imshow("img4", temp);                     //  Show our image inside it.
+//      Debugging Screen
+//      namedWindow("img4", WINDOW_AUTOSIZE);
+//      imshow("img4", temp);
 
         namedWindow("frame_perm", WINDOW_AUTOSIZE);
         setMouseCallback("frame_perm", mouse_event, &rects_green);
         imshow("frame_perm", frame_perm);
 
-        cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" << endl;
+        Clear_Screen();
         cout << "Total parking Spots = \t" << rects_green.size() << endl;
         cout << "No. of Spots Occupied =\t" << rects_red.size() << endl;
-        cout << "No. of Empty Spaces =\t" << (rects_green.size()-rects_red.size()) << endl << endl;
+        cout << "No. of Empty Spaces =\t" << (rects_green.size()-rects_red.size()) << endl;
 
 
         if (waitKey(20) == 10)
@@ -623,5 +631,5 @@ int main(int argc, char* argv[])
 
 //  Dependencies:           sudo apt-get install libopencv-dev
 //  Compiled with:          g++ init.cpp `pkg-config --cflags --libs opencv`
-//  Executed with:          ./a.out img_empty3.jpg
+//  Executed with:          ./a.out img_empty4.jpg vid4.mp4
 //  Switch to ticket mode:  Comment out lines marked around line 555
