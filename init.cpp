@@ -1,5 +1,6 @@
  
 #include <iostream>
+#include <chrono>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
 #include "functions.hpp"
@@ -144,14 +145,15 @@ int main(int argc, char* argv[])
 
 
 
-////////////////////////////////////////////////////////////////////////////
-//////////////////////// Video Starts Here /////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+        //////////////////////// Video Starts Here /////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
 
 
 //  Necessary re-difinitions and other declarations
 
     Mat frame, frame_perm;
+    int sensitivity = 6, ticket_mode = 0, fps = 15;
 
     dilate_element = getStructuringElement(MORPH_RECT, Size(8,8));   //                ***
     erode_element = getStructuringElement(MORPH_RECT, Size(2, 2));
@@ -163,6 +165,11 @@ int main(int argc, char* argv[])
 
     vector<vector<Point>>::iterator itc_vehicles_contour;
     vector<RotatedRect>::iterator itc_vehicles;
+
+    vector<RotatedRect> rects_vehicles;
+    vector<vector<Point>> contours_vehicles;
+
+    auto time_start = std::chrono::high_resolution_clock::now();
 
 
 
@@ -186,8 +193,8 @@ int main(int argc, char* argv[])
 
 
 //  Edge Detection operations
-    Sobel(img_empty, img_horizontal, CV_8U, 0, 1, 3, 5, 0);   // Vertical Edges             ****
-    Sobel(img_empty, img_vertical, CV_8U, 1, 0, 3, 5, 0);    // Horizontal Edges            ****
+    Sobel(img_empty, img_horizontal, CV_8U, 0, 1, 3, sensitivity, 0);   // Vertical Edges             ****
+    Sobel(img_empty, img_vertical, CV_8U, 1, 0, 3, sensitivity, 0);    // Horizontal Edges            ****
 
 
 //  Add Horizontal + Vertical edges
@@ -208,119 +215,134 @@ int main(int argc, char* argv[])
         frame_perm = frame.clone();
 
 
-//      Converts frame to gray
-        cvtColor(frame, frame, COLOR_BGR2GRAY);
-        blur(frame, frame, Size(5,5));                        // Gaussian blur 5x5
+//      Time commands for FPS        
+        auto time_now = std::chrono::high_resolution_clock::now();
 
-
-//      Apply Sobel filter
-        Mat img_horizontal2, img_vertical2;
-        Sobel(frame, img_horizontal2, CV_8U, 0, 1, 3, 4, 0);   // Vertical Edges             ****
-        Sobel(frame, img_vertical2, CV_8U, 1, 0, 3, 4, 0);    // Horizontal Edges            ****
-
-
-//      Add Horizontal + Vertical edges
-        frame = img_horizontal2 + img_vertical2;
-
-
-//      Create output matrice(s)
-        frame -= img_empty;
-
-
-//      Threshold
-        threshold(frame, frame, 0, 255, THRESH_OTSU+THRESH_BINARY);
-
-
-//      Dilate to remove small marks
-        erode(frame, frame, erode_element);
-
-
-//      Morphology (Perform after substraction)
-        morphologyEx(frame, frame, MORPH_CLOSE, kernel);       // Remove internal noise
-
-
-//      Substract original edges from later ones
-        frame -= img_empty;
-        dilate(frame, frame, dilate_element2);
-
-
-//      Instantiate contours
-        vector<vector<Point>> contours_vehicles;                 // vector of vectors (contours)
-        cv::findContours(frame, contours_vehicles, RETR_EXTERNAL, CHAIN_APPROX_NONE); // retrieve all external contours, all pixels of it
-
-
-//      Iterator for contours
-        vector<RotatedRect> rects_vehicles;                      // New initialization needed for every new frame
-        itc_vehicles_contour = contours_vehicles.begin();
-
-
-    
-        while(itc_vehicles_contour!=contours_vehicles.end())
+        if(std::chrono::duration<float>(time_now - time_start).count() > (1/float(fps)))
         {
+//          If time difference is in accordance with FPS
+            time_start = std::chrono::high_resolution_clock::now();
 
-//          Remove patch that has no inside limits of aspect ratio and area.
 
-//          Create bounding rect of object
-            RotatedRect mr_vehicles = minAreaRect(Mat(*itc_vehicles_contour));
+//          Converts frame to gray
+            cvtColor(frame, frame, COLOR_BGR2GRAY);
+            blur(frame, frame, Size(5,5));                        // Gaussian blur 5x5
 
-            if(!Verify_Aspect_Ratio(mr_vehicles))
-                itc_vehicles_contour = contours_vehicles.erase(itc_vehicles_contour);
-            else
+
+//          Apply Sobel filter
+            Mat img_horizontal2, img_vertical2;
+            Sobel(frame, img_horizontal2, CV_8U, 0, 1, 3, sensitivity * 0.8, 0);   // Vertical Edges          ****
+            Sobel(frame, img_vertical2, CV_8U, 1, 0, 3, sensitivity * 0.8, 0);    // Horizontal Edges         ****
+
+
+//          Add Horizontal + Vertical edges
+            frame = img_horizontal2 + img_vertical2;
+
+
+//          Create output matrice(s)
+            frame -= img_empty;
+
+
+//          Threshold
+            threshold(frame, frame, 0, 255, THRESH_OTSU+THRESH_BINARY);
+
+
+//          Dilate to remove small marks
+            erode(frame, frame, erode_element);
+
+
+//          Morphology (Perform after substraction)
+            morphologyEx(frame, frame, MORPH_CLOSE, kernel);       // Remove internal noise
+
+
+//          Substract original edges from later ones
+            frame -= img_empty;
+            dilate(frame, frame, dilate_element2);
+
+
+//          Instantiate contours
+            contours_vehicles.clear();
+            cv::findContours(frame, contours_vehicles, RETR_EXTERNAL, CHAIN_APPROX_NONE); // retrieve all external contours, all pixels of it
+
+
+//          Iterator for contours
+
+            rects_vehicles.clear();
+            itc_vehicles_contour = contours_vehicles.begin();
+
+
+        
+            while(itc_vehicles_contour!=contours_vehicles.end())
             {
-                ++itc_vehicles_contour;
-                rects_vehicles.push_back(mr_vehicles);
-            }
-        }
 
+//              Remove patch that has no inside limits of aspect ratio and area.
 
+//              Create bounding rect of object
+                RotatedRect mr_vehicles = minAreaRect(Mat(*itc_vehicles_contour));
 
-////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////// Ticketing Region (See Bottom) /////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////
-
-        runtime.itc_red = runtime.rects_red.begin();
-        while(runtime.itc_red != runtime.rects_red.end())
-        {
-//          Delete red regions "rects_red" on removal of obstruction (center of vehicles doesn't lie on the red region)
-            bool obstruction_remains = false;
-
-            for(itc_vehicles = rects_vehicles.begin(); itc_vehicles <= rects_vehicles.end(); itc_vehicles++)
-            {
-                if(rects_vehicles.empty() || runtime.rects_red.empty())
-//              Prevent SegFaults
-                    break;
-                else if ( Does_Rectangle_Contain_Point( RotatedRect(*runtime.itc_red), RotatedRect(*itc_vehicles).center ) )
-                    obstruction_remains = true;
+                if(!Verify_Aspect_Ratio(mr_vehicles))
+                    itc_vehicles_contour = contours_vehicles.erase(itc_vehicles_contour);
+                else
+                {
+                    ++itc_vehicles_contour;
+                    rects_vehicles.push_back(mr_vehicles);
+                }
             }
 
-            if(obstruction_remains)
-                ++runtime.itc_red;
-
-            else
-                runtime.itc_red = runtime.rects_red.erase(runtime.itc_red);
-        }
-
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////// End of Ticketing Region /////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
 
 
-        for(runtime.itc_green = runtime.rects_green.begin(); runtime.itc_green <= runtime.rects_green.end(); runtime.itc_green++)
-        {
-//          Convert green regions "rects_green" to red regions "rects_red" on detection of obstruction (center of vehicles lies on the green region)
-            bool red_already_contains_this_obstruction = false;
-
-            for(itc_vehicles = rects_vehicles.begin(); itc_vehicles <= rects_vehicles.end(); itc_vehicles++)
+        ////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////// Ticketing Region (See Bottom) /////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////
+        
+            if(!ticket_mode)
             {
-//              Prevent duplication of same regions
-                red_already_contains_this_obstruction = Detect_Rect_In_Rects( RotatedRect(*runtime.itc_green), runtime.rects_red );
+                runtime.itc_red = runtime.rects_red.begin();
+                while(runtime.itc_red != runtime.rects_red.end())
+                {
+//                  Delete red regions "rects_red" on removal of obstruction (center of vehicles doesn't lie on the red region)
+                    bool obstruction_remains = false;
 
-                if(rects_vehicles.empty() || runtime.rects_green.empty())
-//                  Prevent SegFaults
-                    break;
-                else if ( Does_Rectangle_Contain_Point( RotatedRect(*runtime.itc_green), RotatedRect(*itc_vehicles).center ) &&  !red_already_contains_this_obstruction)
-                    runtime.rects_red.push_back(RotatedRect(*runtime.itc_green));
+                    for(itc_vehicles = rects_vehicles.begin(); itc_vehicles <= rects_vehicles.end(); itc_vehicles++)
+                    {
+                        if(rects_vehicles.empty() || runtime.rects_red.empty())
+//                      Prevent SegFaults
+                            break;
+                        else if ( Does_Rectangle_Contain_Point( RotatedRect(*runtime.itc_red), RotatedRect(*itc_vehicles).center ) )
+                            obstruction_remains = true;
+                    }
+
+                    if(obstruction_remains)
+                        ++runtime.itc_red;
+
+                    else
+                        runtime.itc_red = runtime.rects_red.erase(runtime.itc_red);
+                }
             }
+
+        //////////////////////////////////////////////////////////////////////////////////
+        //////////////////////// End of Ticketing Region /////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////
+
+
+            for(runtime.itc_green = runtime.rects_green.begin(); runtime.itc_green <= runtime.rects_green.end(); runtime.itc_green++)
+            {
+//              Convert green regions "rects_green" to red regions "rects_red" on detection of obstruction (center of vehicles lies on the green region)
+                bool red_already_contains_this_obstruction = false;
+
+                for(itc_vehicles = rects_vehicles.begin(); itc_vehicles <= rects_vehicles.end(); itc_vehicles++)
+                {
+//                  Prevent duplication of same regions
+                    red_already_contains_this_obstruction = Detect_Rect_In_Rects( RotatedRect(*runtime.itc_green), runtime.rects_red );
+
+                    if(rects_vehicles.empty() || runtime.rects_green.empty())
+//                      Prevent SegFaults
+                        break;
+                    else if ( Does_Rectangle_Contain_Point( RotatedRect(*runtime.itc_green), RotatedRect(*itc_vehicles).center ) &&  !red_already_contains_this_obstruction)
+                        runtime.rects_red.push_back(RotatedRect(*runtime.itc_green));
+                }
+            }
+
         }
 
 
@@ -342,17 +364,16 @@ int main(int argc, char* argv[])
 
 //      Output Operations
 
-//      Debugging Screen
-//      namedWindow("img4", WINDOW_AUTOSIZE);
-//      imshow("img4", frame);
-
         namedWindow("Ocular Parking System", WINDOW_AUTOSIZE);
+        createTrackbar("Ticket Mode", "Ocular Parking System", &ticket_mode, 1);
+        createTrackbar("FPS", "Ocular Parking System", &fps, 40);
+        createTrackbar("Sensitivity", "Ocular Parking System", &sensitivity, 15);        
         imshow("Ocular Parking System", frame_perm);
 
         Clear_Screen();
-        cout << "Total parking Spots = \t" << runtime.rects_green.size() << endl;
-        cout << "No. of Spots Occupied =\t" << runtime.rects_red.size() << endl;
-        cout << "No. of Empty Spaces =\t" << (runtime.rects_green.size()- runtime.rects_red.size()) << endl;
+        cout << "Total parking Spots   = " << runtime.rects_green.size() << endl;
+        cout << "No. of Spots Occupied = " << runtime.rects_red.size() << endl;
+        cout << "No. of Empty Spaces   = " << (runtime.rects_green.size()- runtime.rects_red.size()) << endl;
 
 
         if (waitKey(20) == 10)

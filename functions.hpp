@@ -265,5 +265,3 @@ void Clear_Screen()
 {
     cout << "\033[2J\033[1;1H" << endl << endl << endl;
 }
-
-
