@@ -393,4 +393,3 @@ int main(int argc, char* argv[])
 //                          sudo apt-get install libopencv-dev
 //  Compilation :           g++ init.cpp `pkg-config --cflags --libs opencv`
 //  Execution:              ./a.out "empty_images/img_empty4.jpg" "video/vid4.mp4"
-//  Switch to ticket mode:  Comment out lines marked around line 280
